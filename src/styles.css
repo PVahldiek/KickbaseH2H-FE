@@ -780,6 +780,10 @@ td.points {
         padding: 15px;
     }
 
+    .close-button {
+        top: calc(16px + env(safe-area-inset-top));
+    }
+
     th,
     td {
         padding-left: 7px;
