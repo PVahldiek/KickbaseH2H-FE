@@ -18,6 +18,7 @@ type Fixture = {
   awayPlayer: string;
   homePoints: number | null;
   awayPoints: number | null;
+  h2hAvailable: boolean;
 };
 
 type H2hPlayerStats = {
@@ -79,8 +80,8 @@ type H2hResponse = {
           <label>
             Spieltag
             <select
-              (change)="selectDay($any($event.target).value)"
-              [value]="matchday"
+                (change)="selectDay($any($event.target).value)"
+                [value]="matchday"
             >
               @for (day of days; track day) {
                 <option [value]="day">{{ day }}</option>
@@ -95,19 +96,23 @@ type H2hResponse = {
 
             <table>
               <thead>
-                <tr>
-                  <th>#</th>
-                  <th>Spieler</th>
-                  <th>Sp</th>
-                  <th>S</th>
-                  <th>U</th>
-                  <th>N</th>
-                  <th>Pkt</th>
-                </tr>
+              <tr>
+                <th>#</th>
+                <th>Spieler</th>
+                <th>Sp</th>
+                <th>S</th>
+                <th>U</th>
+                <th>N</th>
+                <th>Pkt</th>
+              </tr>
               </thead>
 
               <tbody>
-                @for (row of table; track row.player; let i = $index) {
+                @for (
+                        row of table;
+                    track row.player;
+                    let i = $index
+                    ) {
                   <tr>
                     <td>{{ i + 1 }}</td>
                     <td>{{ row.player }}</td>
@@ -126,12 +131,34 @@ type H2hResponse = {
             <h2>Duelle · Spieltag {{ matchday }}</h2>
 
             <div class="fixtures">
-              @for (fixture of fixtures; track fixture.homePlayer) {
-                @if (isUpcoming(fixture)) {
+              @for (
+                      fixture of fixtures;
+                  track fixture.homePlayer
+                  ) {
+
+                @if (fixture.h2hAvailable) {
                   <button
-                    class="fixture-row clickable"
-                    type="button"
-                    (click)="openH2h(fixture)"
+                      class="fixture-row clickable"
+                      type="button"
+                      (click)="openH2h(fixture)"
+                  >
+                    <span>{{ fixture.homePlayer }}</span>
+
+                    <strong>
+                      {{ fixture.homePoints ?? '–' }}
+                      :
+                      {{ fixture.awayPoints ?? '–' }}
+                    </strong>
+
+                    <span>{{ fixture.awayPlayer }}</span>
+
+                    <span class="fixture-arrow">›</span>
+                  </button>
+                } @else if (isFuture(fixture)) {
+                  <button
+                      class="fixture-row clickable"
+                      type="button"
+                      (click)="openUnavailable(fixture)"
                   >
                     <span>{{ fixture.homePlayer }}</span>
 
@@ -161,9 +188,19 @@ type H2hResponse = {
               }
             </div>
 
-            <p class="hint">
-              Kommende Duelle anklicken für Matchday H2H Infos.
-            </p>
+            @if (isSelectedMatchdayActive()) {
+              <p class="hint">
+                Kommende Duelle anklicken für Matchday H2H Infos.
+              </p>
+            } @else if (isSelectedMatchdayFuture()) {
+              <p class="hint">
+                Stats für zukünftige Spieltage sind noch nicht verfügbar.
+              </p>
+            } @else {
+              <p class="hint">
+                Die H2H-Infos sind für diesen Spieltag bereits geschlossen.
+              </p>
+            }
           </section>
         </div>
       }
@@ -171,21 +208,21 @@ type H2hResponse = {
 
     @if (selectedFixture) {
       <div
-        class="modal-backdrop"
-        (click)="closeH2h()"
+          class="modal-backdrop"
+          (click)="closeH2h()"
       >
         <section
-          class="h2h-modal"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="h2h-title"
-          (click)="$event.stopPropagation()"
+            class="h2h-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="h2h-title"
+            (click)="$event.stopPropagation()"
         >
           <button
-            class="modal-close"
-            type="button"
-            aria-label="Schließen"
-            (click)="closeH2h()"
+              class="modal-close"
+              type="button"
+              aria-label="Schließen"
+              (click)="closeH2h()"
           >
             ×
           </button>
@@ -218,18 +255,23 @@ type H2hResponse = {
               <p>{{ h2hError }}</p>
 
               <button
-                type="button"
-                (click)="loadH2h()"
+                  type="button"
+                  (click)="loadH2h()"
               >
                 Erneut versuchen
               </button>
             </div>
           }
 
-          @if (h2hStats && !h2hLoading && !h2hError) {
+          @if (
+              h2hStats &&
+              !h2hLoading &&
+              !h2hError
+              ) {
             <div class="prediction">
               <div class="prediction-heading">
                 <span>Prognose</span>
+
                 <strong>
                   {{ h2hStats.prediction.home }}%
                   <small>vs</small>
@@ -239,13 +281,17 @@ type H2hResponse = {
 
               <div class="prediction-bar">
                 <div
-                  class="prediction-home"
-                  [style.width.%]="h2hStats.prediction.home"
+                    class="prediction-home"
+                    [style.width.%]="
+                    h2hStats.prediction.home
+                  "
                 ></div>
 
                 <div
-                  class="prediction-away"
-                  [style.width.%]="h2hStats.prediction.away"
+                    class="prediction-away"
+                    [style.width.%]="
+                    h2hStats.prediction.away
+                  "
                 ></div>
               </div>
 
@@ -261,26 +307,31 @@ type H2hResponse = {
 
                 <div class="position">
                   <span>Aktuelle Position</span>
-                  <strong>{{ h2hStats.home.position || '–' }}.</strong>
+
+                  <strong>
+                    {{ h2hStats.home.position || '–' }}.
+                  </strong>
                 </div>
 
                 <div class="form-section">
                   <span>Form</span>
 
                   <div class="form">
-                    @if (h2hStats.home.form.length === 0) {
+                    @if (
+                        h2hStats.home.form.length === 0
+                        ) {
                       <em>Noch keine Spiele</em>
                     }
 
                     @for (
-                      result of h2hStats.home.form;
-                      track $index
-                    ) {
+                            result of h2hStats.home.form;
+                        track $index
+                        ) {
                       <span
-                        class="form-result"
-                        [class.win]="result === 'W'"
-                        [class.draw]="result === 'U'"
-                        [class.loss]="result === 'N'"
+                          class="form-result"
+                          [class.win]="result === 'W'"
+                          [class.draw]="result === 'U'"
+                          [class.loss]="result === 'N'"
                       >
                         {{ result }}
                       </span>
@@ -291,12 +342,24 @@ type H2hResponse = {
                 <div class="stats-grid">
                   <div>
                     <span>Ø Punkte</span>
-                    <strong>{{ h2hStats.home.average | number:'1.1-1' }}</strong>
+
+                    <strong>
+                      {{
+                        h2hStats.home.average
+                            | number:'1.1-1'
+                      }}
+                    </strong>
                   </div>
 
                   <div>
                     <span>Ø letzte 5</span>
-                    <strong>{{ h2hStats.home.recentAverage | number:'1.1-1' }}</strong>
+
+                    <strong>
+                      {{
+                        h2hStats.home.recentAverage
+                            | number:'1.1-1'
+                      }}
+                    </strong>
                   </div>
 
                   <div>
@@ -316,26 +379,31 @@ type H2hResponse = {
 
                 <div class="position">
                   <span>Aktuelle Position</span>
-                  <strong>{{ h2hStats.away.position || '–' }}.</strong>
+
+                  <strong>
+                    {{ h2hStats.away.position || '–' }}.
+                  </strong>
                 </div>
 
                 <div class="form-section">
                   <span>Form</span>
 
                   <div class="form">
-                    @if (h2hStats.away.form.length === 0) {
+                    @if (
+                        h2hStats.away.form.length === 0
+                        ) {
                       <em>Noch keine Spiele</em>
                     }
 
                     @for (
-                      result of h2hStats.away.form;
-                      track $index
-                    ) {
+                            result of h2hStats.away.form;
+                        track $index
+                        ) {
                       <span
-                        class="form-result"
-                        [class.win]="result === 'W'"
-                        [class.draw]="result === 'U'"
-                        [class.loss]="result === 'N'"
+                          class="form-result"
+                          [class.win]="result === 'W'"
+                          [class.draw]="result === 'U'"
+                          [class.loss]="result === 'N'"
                       >
                         {{ result }}
                       </span>
@@ -346,12 +414,24 @@ type H2hResponse = {
                 <div class="stats-grid">
                   <div>
                     <span>Ø Punkte</span>
-                    <strong>{{ h2hStats.away.average | number:'1.1-1' }}</strong>
+
+                    <strong>
+                      {{
+                        h2hStats.away.average
+                            | number:'1.1-1'
+                      }}
+                    </strong>
                   </div>
 
                   <div>
                     <span>Ø letzte 5</span>
-                    <strong>{{ h2hStats.away.recentAverage | number:'1.1-1' }}</strong>
+
+                    <strong>
+                      {{
+                        h2hStats.away.recentAverage
+                            | number:'1.1-1'
+                      }}
+                    </strong>
                   </div>
 
                   <div>
@@ -375,12 +455,92 @@ type H2hResponse = {
         </section>
       </div>
     }
+
+    @if (unavailableFixture) {
+      <div
+          class="modal-backdrop"
+          (click)="closeUnavailable()"
+      >
+        <section
+            class="h2h-modal unavailable-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="unavailable-title"
+            (click)="$event.stopPropagation()"
+        >
+          <button
+              class="modal-close"
+              type="button"
+              aria-label="Schließen"
+              (click)="closeUnavailable()"
+          >
+            ×
+          </button>
+
+          <div class="modal-header">
+            <p class="modal-eyebrow">
+              MATCHDAY {{ unavailableFixture.matchday }}
+            </p>
+
+            <h2 id="unavailable-title">
+              Stats noch nicht verfügbar
+            </h2>
+
+            <div class="matchup">
+              <span>
+                {{ unavailableFixture.homePlayer }}
+              </span>
+
+              <strong>VS</strong>
+
+              <span>
+                {{ unavailableFixture.awayPlayer }}
+              </span>
+            </div>
+          </div>
+
+          <div class="unavailable-content">
+            <div class="unavailable-icon">
+              ⏳
+            </div>
+
+            <h3>
+              Komm später wieder
+            </h3>
+
+            <p>
+              Die Matchday-Stats für diesen Spieltag
+              sind noch nicht verfügbar.
+            </p>
+
+            <p>
+              Sobald dieser Spieltag an der Reihe ist,
+              kannst du hier Form, Statistiken und
+              Prognose der beiden Spieler sehen.
+            </p>
+
+            <button
+                type="button"
+                class="unavailable-button"
+                (click)="closeUnavailable()"
+            >
+              Verstanden
+            </button>
+          </div>
+        </section>
+      </div>
+    }
   `
 })
 export class AppComponent {
+
   private http = inject(HttpClient);
 
-  days = Array.from({ length: 34 }, (_, i) => i + 1);
+  days = Array.from(
+      { length: 34 },
+      (_, i) => i + 1
+  );
+
   matchday = 1;
 
   table: TableRow[] = [];
@@ -390,16 +550,23 @@ export class AppComponent {
   error: string | null = null;
 
   selectedFixture: Fixture | null = null;
+
   h2hStats: H2hResponse | null = null;
   h2hLoading = false;
   h2hError: string | null = null;
+
+  unavailableFixture: Fixture | null = null;
 
   constructor() {
     this.load();
   }
 
   selectDay(day: string) {
+    this.closeH2h();
+    this.closeUnavailable();
+
     this.matchday = Number(day);
+
     this.loadFixtures();
   }
 
@@ -418,7 +585,9 @@ export class AppComponent {
           ),
 
       fixtures: this.http
-          .get<Fixture[]>(`/api/matchdays/${this.matchday}`)
+          .get<Fixture[]>(
+              `/api/matchdays/${this.matchday}`
+          )
           .pipe(
               retry({
                 count: 5,
@@ -446,7 +615,9 @@ export class AppComponent {
 
   private loadFixtures() {
     this.http
-        .get<Fixture[]>(`/api/matchdays/${this.matchday}`)
+        .get<Fixture[]>(
+            `/api/matchdays/${this.matchday}`
+        )
         .pipe(
             retry({
               count: 5,
@@ -465,14 +636,45 @@ export class AppComponent {
         });
   }
 
+  /**
+   * Returns true when the fixture belongs to the next/current
+   * matchday and H2H statistics are available.
+   */
   isUpcoming(fixture: Fixture): boolean {
+    return fixture.h2hAvailable;
+  }
+
+  /**
+   * Returns true when a fixture is from a future matchday.
+   *
+   * Since h2hAvailable is provided by the backend, a matchday
+   * is considered future when it is incomplete but H2H is not
+   * available for it.
+   */
+  isFuture(fixture: Fixture): boolean {
     return (
-        fixture.homePoints === null ||
-        fixture.awayPoints === null
+        !fixture.h2hAvailable
+        &&
+        (
+            fixture.homePoints === null
+            ||
+            fixture.awayPoints === null
+        )
     );
   }
 
+  /**
+   * Opens the real H2H statistics modal.
+   */
   openH2h(fixture: Fixture) {
+
+    if (!fixture.h2hAvailable) {
+      this.openUnavailable(fixture);
+      return;
+    }
+
+    this.unavailableFixture = null;
+
     this.selectedFixture = fixture;
     this.h2hStats = null;
     this.h2hError = null;
@@ -480,8 +682,30 @@ export class AppComponent {
     this.loadH2h();
   }
 
+  /**
+   * Opens the "stats not available yet" overlay.
+   */
+  openUnavailable(fixture: Fixture) {
+
+    this.selectedFixture = null;
+    this.h2hStats = null;
+    this.h2hError = null;
+
+    this.unavailableFixture = fixture;
+  }
+
   loadH2h() {
+
     if (!this.selectedFixture) {
+      return;
+    }
+
+    /*
+     * Additional frontend protection.
+     * The backend also enforces this rule.
+     */
+    if (!this.selectedFixture.h2hAvailable) {
+      this.openUnavailable(this.selectedFixture);
       return;
     }
 
@@ -517,9 +741,15 @@ export class AppComponent {
             this.h2hStats = value;
           },
 
-          error: () => {
-            this.h2hError =
-                'Die H2H-Informationen konnten nicht geladen werden.';
+          error: error => {
+
+            if (error?.status === 403) {
+              this.h2hError =
+                  'Die H2H-Informationen sind nur für den kommenden Spieltag verfügbar.';
+            } else {
+              this.h2hError =
+                  'Die H2H-Informationen konnten nicht geladen werden.';
+            }
           }
         });
   }
@@ -528,12 +758,46 @@ export class AppComponent {
     this.selectedFixture = null;
     this.h2hStats = null;
     this.h2hError = null;
+    this.h2hLoading = false;
+  }
+
+  closeUnavailable() {
+    this.unavailableFixture = null;
+  }
+
+  /**
+   * Returns true when the currently selected matchday contains
+   * an H2H-enabled fixture.
+   */
+  isSelectedMatchdayActive(): boolean {
+    return this.fixtures.some(
+        fixture => fixture.h2hAvailable
+    );
+  }
+
+  /**
+   * Returns true when the currently selected matchday contains
+   * future fixtures but is not the active matchday.
+   */
+  isSelectedMatchdayFuture(): boolean {
+    return (
+        !this.isSelectedMatchdayActive()
+        &&
+        this.fixtures.some(
+            fixture => this.isFuture(fixture)
+        )
+    );
   }
 
   @HostListener('document:keydown.escape')
   onEscape() {
+
     if (this.selectedFixture) {
       this.closeH2h();
+    }
+
+    if (this.unavailableFixture) {
+      this.closeUnavailable();
     }
   }
 }
